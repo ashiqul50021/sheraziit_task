@@ -52,6 +52,7 @@ class OrderController extends Controller
     public function index()
     {
         $orders = Order::query()
+            ->select(['id', 'customer_id', 'total_amount', 'status', 'created_at'])
             ->with('customer:id,name')
             ->withCount('items')
             ->get();

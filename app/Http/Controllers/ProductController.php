@@ -12,6 +12,7 @@ class ProductController extends Controller
     public function index()
     {
         $products = Product::query()
+            ->select(['id', 'name', 'price', 'stock', 'category_id'])
             ->with('category:id,name')
             ->get();
 
@@ -32,8 +33,10 @@ class ProductController extends Controller
     public function salesReport()
     {
         $orders = Order::query()
+            ->select(['id', 'customer_id'])
             ->with([
                 'customer:id,name',
+                'items:id,order_id,product_id,quantity,unit_price',
                 'items.product:id,name',
             ])
             ->get();
