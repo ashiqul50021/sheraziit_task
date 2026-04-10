@@ -51,16 +51,19 @@ class OrderController extends Controller
 
     public function index()
     {
-        $orders = Order::all();
+        $orders = Order::query()
+            ->with('customer:id,name')
+            ->withCount('items')
+            ->get();
 
         $data = [];
         foreach ($orders as $order) {
             $data[] = [
                 'id'          => $order->id,
-                'customer'    => $order->customer->name,
+                'customer'    => optional($order->customer)->name,
                 'total'       => $order->total_amount,
                 'status'      => $order->status,
-                'items_count' => $order->items->count(),
+                'items_count' => $order->items_count,
                 'created_at'  => $order->created_at,
             ];
         }

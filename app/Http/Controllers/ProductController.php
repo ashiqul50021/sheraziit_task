@@ -11,7 +11,9 @@ class ProductController extends Controller
 {
     public function index()
     {
-        $products = Product::all();
+        $products = Product::query()
+            ->with('category:id,name')
+            ->get();
 
         $result = [];
         foreach ($products as $product) {
@@ -20,7 +22,7 @@ class ProductController extends Controller
                 'name'     => $product->name,
                 'price'    => $product->price,
                 'stock'    => $product->stock,
-                'category' => $product->category->name,
+                'category' => optional($product->category)->name,
             ];
         }
 
@@ -29,17 +31,22 @@ class ProductController extends Controller
 
     public function salesReport()
     {
-        $orders = Order::all();
+        $orders = Order::query()
+            ->with([
+                'customer:id,name',
+                'items.product:id,name',
+            ])
+            ->get();
 
         $report = [];
         foreach ($orders as $order) {
             foreach ($order->items as $item) {
                 $report[] = [
                     'order_id'     => $order->id,
-                    'product_name' => $item->product->name,
+                    'product_name' => optional($item->product)->name,
                     'qty'          => $item->quantity,
-                    'total'        => $item->quantity * $item->product->price,
-                    'customer'     => $order->customer->name,
+                    'total'        => $item->quantity * $item->unit_price,
+                    'customer'     => optional($order->customer)->name,
                 ];
             }
         }
