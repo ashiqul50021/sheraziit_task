@@ -51,27 +51,30 @@ class OrderController extends Controller
         return response()->json($order, 201);
     }
 
-    public function index()
+    public function index(Request $request)
     {
+        $page = max($request->integer('page', 1), 1);
+
         $orders = Order::query()
             ->select(['id', 'customer_id', 'total_amount', 'status', 'created_at'])
             ->with('customer:id,name')
             ->withCount('items')
-            ->get();
+            ->paginate(15, ['*'], 'page', $page);
 
-        $data = [];
-        foreach ($orders as $order) {
-            $data[] = [
-                'id'          => $order->id,
-                'customer'    => optional($order->customer)->name,
-                'total'       => $order->total_amount,
-                'status'      => $order->status,
-                'items_count' => $order->items_count,
-                'created_at'  => $order->created_at,
-            ];
-        }
+        $orders->setCollection(
+            $orders->getCollection()->map(function (Order $order) {
+                return [
+                    'id'          => $order->id,
+                    'customer'    => optional($order->customer)->name,
+                    'total'       => $order->total_amount,
+                    'status'      => $order->status,
+                    'items_count' => $order->items_count,
+                    'created_at'  => $order->created_at,
+                ];
+            })
+        );
 
-        return response()->json($data);
+        return response()->json($orders);
     }
 
     public function filterByStatus(Request $request)
