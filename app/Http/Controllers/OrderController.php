@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
+use App\Support\PosCache;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -45,6 +46,7 @@ class OrderController extends Controller
         }
 
         $order->update(['total_amount' => $totalAmount]);
+        PosCache::forgetProductReads();
 
         return response()->json($order, 201);
     }

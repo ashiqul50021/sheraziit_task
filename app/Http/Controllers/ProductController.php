@@ -5,29 +5,35 @@ namespace App\Http\Controllers;
 use App\Models\Product;
 use App\Models\Category;
 use App\Models\Order;
+use App\Support\PosCache;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class ProductController extends Controller
 {
     public function index()
     {
-        $products = Product::query()
-            ->select(['id', 'name', 'price', 'stock', 'category_id'])
-            ->with('category:id,name')
-            ->get();
+        $products = Cache::remember(PosCache::PRODUCTS_INDEX, now()->addMinutes(5), function () {
+            $products = Product::query()
+                ->select(['id', 'name', 'price', 'stock', 'category_id'])
+                ->with('category:id,name')
+                ->get();
 
-        $result = [];
-        foreach ($products as $product) {
-            $result[] = [
-                'id'       => $product->id,
-                'name'     => $product->name,
-                'price'    => $product->price,
-                'stock'    => $product->stock,
-                'category' => optional($product->category)->name,
-            ];
-        }
+            $result = [];
+            foreach ($products as $product) {
+                $result[] = [
+                    'id'       => $product->id,
+                    'name'     => $product->name,
+                    'price'    => $product->price,
+                    'stock'    => $product->stock,
+                    'category' => optional($product->category)->name,
+                ];
+            }
 
-        return response()->json($result);
+            return $result;
+        });
+
+        return response()->json($products);
     }
 
     public function salesReport()
@@ -59,23 +65,27 @@ class ProductController extends Controller
 
     public function dashboard()
     {
-        $totalProducts = Product::all()->count();
-        $totalOrders   = Order::all()->count();
-        $totalRevenue  = Order::all()->sum('total_amount');
-        $categories    = Category::all();
+        $dashboard = Cache::remember(PosCache::PRODUCTS_DASHBOARD, now()->addMinutes(5), function () {
+            $totalProducts = Product::all()->count();
+            $totalOrders   = Order::all()->count();
+            $totalRevenue  = Order::all()->sum('total_amount');
+            $categories    = Category::all();
 
-        $topProducts = Product::all()
-            ->sortByDesc('sold_count')
-            ->take(5)
-            ->values();
+            $topProducts = Product::all()
+                ->sortByDesc('sold_count')
+                ->take(5)
+                ->values();
 
-        return response()->json([
-            'total_products' => $totalProducts,
-            'total_orders'   => $totalOrders,
-            'total_revenue'  => $totalRevenue,
-            'categories'     => $categories,
-            'top_products'   => $topProducts,
-        ]);
+            return [
+                'total_products' => $totalProducts,
+                'total_orders'   => $totalOrders,
+                'total_revenue'  => $totalRevenue,
+                'categories'     => $categories,
+                'top_products'   => $topProducts,
+            ];
+        });
+
+        return response()->json($dashboard);
     }
 
     public function search(Request $request)
@@ -98,6 +108,7 @@ class ProductController extends Controller
         ]);
 
         $product = Product::create($request->all());
+        PosCache::forgetProductReads();
 
         return response()->json($product, 201);
     }
